@@ -7,6 +7,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,20 +21,28 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccessTime
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.CardGiftcard
+import androidx.compose.material.icons.outlined.Celebration
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Navigation
 import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material.icons.rounded.WarningAmber
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -57,35 +66,89 @@ import com.example.model.ParentTab
 import com.example.model.PartyEvent
 import com.example.model.PartyUiState
 import com.example.model.RsvpStatus
+import com.example.ui.components.EmptyStateCard
 import com.example.ui.components.ExternalActionHelper
 import com.example.ui.theme.LocalFestaColors
 
 @Composable
 fun ParentsDashboardScreen(
     uiState: PartyUiState,
+    onSelectParty: (String) -> Unit,
+    onOpenCreateParty: () -> Unit,
+    onOpenEditParty: (PartyEvent) -> Unit,
+    onOpenDeleteParty: (PartyEvent) -> Unit,
     onSelectTab: (ParentTab) -> Unit,
     onSearchQueryChange: (String) -> Unit,
     onSelectStatusFilter: (RsvpStatus?) -> Unit,
     onOpenAddGuest: () -> Unit,
+    onOpenEditGuest: (GuestGroup) -> Unit,
     onUpdateGuestStatus: (String, RsvpStatus) -> Unit,
     onRemoveGuest: (String) -> Unit,
-    onWhatsAppReminder: (GuestGroup) -> Unit,
+    onWhatsAppReminder: (PartyEvent, GuestGroup) -> Unit,
     onSelectGiftCategory: (GiftCategory?) -> Unit,
     onOpenAddGift: () -> Unit,
+    onOpenEditGift: (GiftItem) -> Unit,
     onRequestManualReserveGift: (GiftItem) -> Unit,
     onReleaseGift: (String) -> Unit,
+    onRemoveGift: (String) -> Unit,
     onCopyBuffetReport: () -> Unit,
     onFeedbackMessage: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val activeParty = uiState.activeParty
+
+    if (activeParty == null) {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp, vertical = 24.dp),
+            contentAlignment = Alignment.TopCenter
+        ) {
+            EmptyStateCard(
+                icon = Icons.Outlined.Celebration,
+                title = "Nenhuma festa cadastrada ainda",
+                subtitle = "Comece do zero personalizando os dados do aniversário: nome da criança, data, horário, local, lista de convidados e presentes.",
+                actionContent = {
+                    Button(
+                        onClick = onOpenCreateParty,
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier
+                            .minimumInteractiveComponentSize()
+                            .testTag("create_first_party_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Add,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Cadastrar Minha Primeira Festa")
+                    }
+                }
+            )
+        }
+        return
+    }
+
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        item(key = "party_selector_bar") {
+            PartySelectorStrip(
+                parties = uiState.parties,
+                activePartyId = activeParty.id,
+                onSelectParty = onSelectParty,
+                onCreateParty = onOpenCreateParty
+            )
+        }
+
         item(key = "event_header") {
             ParentEventHeaderCard(
-                event = uiState.event,
+                event = activeParty,
+                onEditParty = { onOpenEditParty(activeParty) },
+                onDeleteParty = { onOpenDeleteParty(activeParty) },
                 onFeedbackMessage = onFeedbackMessage
             )
         }
@@ -110,6 +173,7 @@ fun ParentsDashboardScreen(
             ParentTabSelector(
                 selectedTab = uiState.selectedParentTab,
                 guestsCount = uiState.guests.size,
+                responsesCount = uiState.formResponses.size,
                 giftsCount = uiState.gifts.size,
                 dietaryCount = uiState.activeDietaryAlertsCount,
                 onSelectTab = onSelectTab
@@ -131,9 +195,17 @@ fun ParentsDashboardScreen(
                         onSearchQueryChange = onSearchQueryChange,
                         onSelectStatusFilter = onSelectStatusFilter,
                         onOpenAddGuest = onOpenAddGuest,
+                        onEditGuest = onOpenEditGuest,
                         onUpdateGuestStatus = onUpdateGuestStatus,
                         onRemoveGuest = onRemoveGuest,
-                        onWhatsAppReminder = onWhatsAppReminder
+                        onWhatsAppReminder = { guest -> onWhatsAppReminder(activeParty, guest) }
+                    )
+
+                    ParentTab.RESPONSES -> ResponsesTabContent(
+                        responses = uiState.formResponses,
+                        onEditGuest = onOpenEditGuest,
+                        onUpdateGuestStatus = onUpdateGuestStatus,
+                        onRemoveGuest = onRemoveGuest
                     )
 
                     ParentTab.GIFTS -> ParentsGiftsTabContent(
@@ -141,8 +213,10 @@ fun ParentsDashboardScreen(
                         selectedCategory = uiState.selectedParentGiftCategory,
                         onSelectCategory = onSelectGiftCategory,
                         onOpenAddGift = onOpenAddGift,
+                        onEditGift = onOpenEditGift,
                         onRequestManualReserve = onRequestManualReserveGift,
-                        onReleaseGift = onReleaseGift
+                        onReleaseGift = onReleaseGift,
+                        onRemoveGift = onRemoveGift
                     )
 
                     ParentTab.DIETARY -> DietarySummaryTabContent(
@@ -157,8 +231,56 @@ fun ParentsDashboardScreen(
 }
 
 @Composable
+private fun PartySelectorStrip(
+    parties: List<PartyEvent>,
+    activePartyId: String,
+    onSelectParty: (String) -> Unit,
+    onCreateParty: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        parties.forEach { party ->
+            FilterChip(
+                selected = party.id == activePartyId,
+                onClick = { onSelectParty(party.id) },
+                label = {
+                    Text(
+                        text = "${party.childName} (${party.ageTurning}a)",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            )
+        }
+        FilledTonalButton(
+            onClick = onCreateParty,
+            shape = RoundedCornerShape(10.dp),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+            modifier = Modifier
+                .minimumInteractiveComponentSize()
+                .testTag("new_party_chip_button")
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Add,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("Nova Festa", style = MaterialTheme.typography.labelLarge)
+        }
+    }
+}
+
+@Composable
 private fun ParentEventHeaderCard(
     event: PartyEvent,
+    onEditParty: () -> Unit,
+    onDeleteParty: () -> Unit,
     onFeedbackMessage: (String) -> Unit
 ) {
     val context = LocalContext.current
@@ -201,11 +323,13 @@ private fun ParentEventHeaderCard(
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                             )
                         }
-                        Text(
-                            text = event.rsvpDeadline,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = festaColors.mutedText
-                        )
+                        if (event.rsvpDeadline.isNotBlank()) {
+                            Text(
+                                text = event.rsvpDeadline,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = festaColors.mutedText
+                            )
+                        }
                     }
 
                     Text(
@@ -214,11 +338,18 @@ private fun ParentEventHeaderCard(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
+
+                    if (event.subtitle.isNotBlank()) {
+                        Text(
+                            text = event.subtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = festaColors.mutedText
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // Visual countdown widget
                 Surface(
                     shape = RoundedCornerShape(14.dp),
                     color = MaterialTheme.colorScheme.primary
@@ -257,34 +388,69 @@ private fun ParentEventHeaderCard(
                 )
             }
 
-            FilledTonalButton(
-                onClick = {
-                    ExternalActionHelper.openGoogleMaps(
-                        context = context,
-                        query = event.mapsQuery,
-                        onFallbackMessage = onFeedbackMessage
-                    )
-                },
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.filledTonalButtonColors(
-                    containerColor = festaColors.subtleSurface,
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .minimumInteractiveComponentSize()
-                    .testTag("parent_open_maps_button")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.Navigation,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Abrir local no Google Maps",
-                    style = MaterialTheme.typography.labelLarge
-                )
+                FilledTonalButton(
+                    onClick = {
+                        ExternalActionHelper.openGoogleMaps(
+                            context = context,
+                            query = event.mapsQuery,
+                            onFallbackMessage = onFeedbackMessage
+                        )
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = festaColors.subtleSurface,
+                        contentColor = MaterialTheme.colorScheme.onSurface
+                    ),
+                    modifier = Modifier
+                        .weight(1f)
+                        .minimumInteractiveComponentSize()
+                        .testTag("parent_open_maps_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Navigation,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Abrir GPS",
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
+
+                FilledTonalButton(
+                    onClick = onEditParty,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .minimumInteractiveComponentSize()
+                        .testTag("edit_party_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Edit,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Editar")
+                }
+
+                IconButton(
+                    onClick = onDeleteParty,
+                    modifier = Modifier
+                        .minimumInteractiveComponentSize()
+                        .testTag("delete_party_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.DeleteOutline,
+                        contentDescription = "Excluir festa",
+                        tint = festaColors.roseText
+                    )
+                }
             }
         }
     }
@@ -565,6 +731,7 @@ private fun MetricCard(
 private fun ParentTabSelector(
     selectedTab: ParentTab,
     guestsCount: Int,
+    responsesCount: Int,
     giftsCount: Int,
     dietaryCount: Int,
     onSelectTab: (ParentTab) -> Unit
@@ -579,6 +746,7 @@ private fun ParentTabSelector(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
                 .padding(4.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
@@ -586,12 +754,12 @@ private fun ParentTabSelector(
                 val selected = tab == selectedTab
                 val count = when (tab) {
                     ParentTab.GUESTS -> guestsCount
+                    ParentTab.RESPONSES -> responsesCount
                     ParentTab.GIFTS -> giftsCount
                     ParentTab.DIETARY -> dietaryCount
                 }
                 Surface(
                     modifier = Modifier
-                        .weight(1f)
                         .minimumInteractiveComponentSize()
                         .clip(RoundedCornerShape(12.dp))
                         .clickable { onSelectTab(tab) }
@@ -601,9 +769,7 @@ private fun ParentTabSelector(
                     shadowElevation = if (selected) 2.dp else 0.dp
                 ) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 8.dp, vertical = 10.dp),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -611,10 +777,9 @@ private fun ParentTabSelector(
                             text = tab.label,
                             style = MaterialTheme.typography.labelLarge,
                             color = if (selected) MaterialTheme.colorScheme.primary else festaColors.mutedText,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            maxLines = 1
                         )
-                        Spacer(modifier = Modifier.width(5.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Surface(
                             color = if (selected) festaColors.indigoContainer else MaterialTheme.colorScheme.surface,
                             shape = RoundedCornerShape(999.dp)

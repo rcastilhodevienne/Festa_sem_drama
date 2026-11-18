@@ -22,15 +22,19 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.material.icons.outlined.Celebration
 import androidx.compose.material.icons.outlined.Checkroom
 import androidx.compose.material.icons.outlined.Explore
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.Toys
 import androidx.compose.material.icons.rounded.AdminPanelSettings
-import androidx.compose.material.icons.rounded.CardGiftcard
+import androidx.compose.material.icons.rounded.HowToReg
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -39,6 +43,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,10 +63,14 @@ import com.example.ui.theme.LocalFestaColors
 @Composable
 fun TopModeSwitcherBar(
     currentMode: AppViewMode,
+    userDisplayName: String,
     onModeSelected: (AppViewMode) -> Unit,
+    onEditProfileClick: () -> Unit,
+    onSignOutClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val festaColors = LocalFestaColors.current
+    var accountMenuOpen by remember { mutableStateOf(false) }
 
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -80,7 +91,8 @@ fun TopModeSwitcherBar(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.weight(1f)
                 ) {
                     Box(
                         modifier = Modifier
@@ -104,31 +116,59 @@ fun TopModeSwitcherBar(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Organizador Executivo Infantil",
+                            text = "Base em nuvem · $userDisplayName",
                             style = MaterialTheme.typography.bodySmall,
-                            color = festaColors.mutedText
+                            color = festaColors.mutedText,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
 
-                Surface(
-                    color = if (currentMode == AppViewMode.PARENTS_DASHBOARD) {
-                        festaColors.indigoContainer
-                    } else {
-                        festaColors.emeraldContainer
-                    },
-                    shape = RoundedCornerShape(999.dp)
-                ) {
-                    Text(
-                        text = if (currentMode == AppViewMode.PARENTS_DASHBOARD) "Modo Gestão" else "Modo Público",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (currentMode == AppViewMode.PARENTS_DASHBOARD) {
-                            festaColors.indigoText
-                        } else {
-                            festaColors.emeraldText
-                        },
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                    )
+                Box {
+                    IconButton(
+                        onClick = { accountMenuOpen = true },
+                        modifier = Modifier
+                            .minimumInteractiveComponentSize()
+                            .testTag("account_menu_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Person,
+                            contentDescription = "Opções da conta",
+                            tint = festaColors.mutedText
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = accountMenuOpen,
+                        onDismissRequest = { accountMenuOpen = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Meu Perfil") },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Outlined.Person,
+                                    contentDescription = null
+                                )
+                            },
+                            onClick = {
+                                accountMenuOpen = false
+                                onEditProfileClick()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Sair da conta ($userDisplayName)") },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Outlined.Logout,
+                                    contentDescription = null
+                                )
+                            },
+                            onClick = {
+                                accountMenuOpen = false
+                                onSignOutClick()
+                            }
+                        )
+                    }
                 }
             }
 
@@ -154,8 +194,8 @@ fun TopModeSwitcherBar(
                     )
                     ModePillButton(
                         selected = currentMode == AppViewMode.GUEST_PAGE,
-                        label = "Página da Festa",
-                        icon = Icons.Rounded.CardGiftcard,
+                        label = "Visão de Respostas",
+                        icon = Icons.Rounded.HowToReg,
                         testTag = "switch_guest_mode",
                         onClick = { onModeSelected(AppViewMode.GUEST_PAGE) },
                         modifier = Modifier.weight(1f)
@@ -322,7 +362,7 @@ fun StepperField(
     label: String,
     value: Int,
     minValue: Int = 0,
-    maxValue: Int = 15,
+    maxValue: Int = 50,
     testTagPrefix: String,
     onValueChange: (Int) -> Unit,
     modifier: Modifier = Modifier
@@ -392,7 +432,8 @@ fun EmptyStateCard(
     icon: ImageVector,
     title: String,
     subtitle: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    actionContent: (@Composable () -> Unit)? = null
 ) {
     val festaColors = LocalFestaColors.current
     Surface(
@@ -404,7 +445,7 @@ fun EmptyStateCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 32.dp),
+                .padding(horizontal = 24.dp, vertical = 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -433,6 +474,10 @@ fun EmptyStateCard(
                 style = MaterialTheme.typography.bodyMedium,
                 color = festaColors.mutedText
             )
+            if (actionContent != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                actionContent()
+            }
         }
     }
 }

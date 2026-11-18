@@ -17,14 +17,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Chat
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CardGiftcard
-import androidx.compose.material.icons.outlined.Chat
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material.icons.outlined.HowToReg
 import androidx.compose.material.icons.outlined.LockOpen
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Restaurant
@@ -76,6 +78,7 @@ fun GuestsTabContent(
     onSearchQueryChange: (String) -> Unit,
     onSelectStatusFilter: (RsvpStatus?) -> Unit,
     onOpenAddGuest: () -> Unit,
+    onEditGuest: (GuestGroup) -> Unit,
     onUpdateGuestStatus: (String, RsvpStatus) -> Unit,
     onRemoveGuest: (String) -> Unit,
     onWhatsAppReminder: (GuestGroup) -> Unit
@@ -163,17 +166,61 @@ fun GuestsTabContent(
         if (guests.isEmpty()) {
             EmptyStateCard(
                 icon = Icons.Outlined.Groups,
-                title = "Nenhum convidado encontrado",
-                subtitle = "Ajuste os filtros de status ou adicione um novo convidado para começar."
+                title = "Nenhum convidado cadastrado",
+                subtitle = "Cadastre convidados manualmente ou aguarde confirmações na Visão de Respostas."
             )
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 guests.forEach { guest ->
                     GuestManagementCard(
                         guest = guest,
+                        onEdit = { onEditGuest(guest) },
                         onUpdateStatus = { newStatus -> onUpdateGuestStatus(guest.id, newStatus) },
                         onRemove = { onRemoveGuest(guest.id) },
                         onWhatsAppReminder = { onWhatsAppReminder(guest) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ResponsesTabContent(
+    responses: List<GuestGroup>,
+    onEditGuest: (GuestGroup) -> Unit,
+    onUpdateGuestStatus: (String, RsvpStatus) -> Unit,
+    onRemoveGuest: (String) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column {
+            Text(
+                text = "Respostas Recebidas",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = "${responses.size} resposta(s) enviada(s) pelo formulário público",
+                style = MaterialTheme.typography.bodySmall,
+                color = LocalFestaColors.current.mutedText
+            )
+        }
+
+        if (responses.isEmpty()) {
+            EmptyStateCard(
+                icon = Icons.Outlined.HowToReg,
+                title = "Nenhuma resposta recebida ainda",
+                subtitle = "Quando os convidados responderem na aba \"Visão de Respostas\", as confirmações, recusas e alergias aparecerão aqui em tempo real."
+            )
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                responses.forEach { guest ->
+                    GuestManagementCard(
+                        guest = guest,
+                        onEdit = { onEditGuest(guest) },
+                        onUpdateStatus = { newStatus -> onUpdateGuestStatus(guest.id, newStatus) },
+                        onRemove = { onRemoveGuest(guest.id) },
+                        onWhatsAppReminder = {}
                     )
                 }
             }
@@ -185,6 +232,7 @@ fun GuestsTabContent(
 @Composable
 private fun GuestManagementCard(
     guest: GuestGroup,
+    onEdit: () -> Unit,
     onUpdateStatus: (RsvpStatus) -> Unit,
     onRemove: () -> Unit,
     onWhatsAppReminder: () -> Unit
@@ -226,10 +274,15 @@ private fun GuestManagementCard(
                         style = MaterialTheme.typography.bodySmall,
                         color = festaColors.mutedText
                     )
+                    Text(
+                        text = guest.guestSource.label,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = festaColors.indigoText
+                    )
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    StatusBadge(status = guest.status)
+                    StatusBadge(status = guest.rsvpStatus)
                     Box {
                         IconButton(
                             onClick = { menuExpanded = true },
@@ -244,8 +297,21 @@ private fun GuestManagementCard(
                             expanded = menuExpanded,
                             onDismissRequest = { menuExpanded = false }
                         ) {
+                            DropdownMenuItem(
+                                text = { Text("Editar convidado") },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Edit,
+                                        contentDescription = null
+                                    )
+                                },
+                                onClick = {
+                                    menuExpanded = false
+                                    onEdit()
+                                }
+                            )
                             RsvpStatus.entries.forEach { option ->
-                                if (option != guest.status) {
+                                if (option != guest.rsvpStatus) {
                                     DropdownMenuItem(
                                         text = { Text("Marcar como ${option.label}") },
                                         onClick = {
@@ -312,7 +378,7 @@ private fun GuestManagementCard(
                 }
             }
 
-            if (guest.status == RsvpStatus.PENDING) {
+            if (guest.rsvpStatus == RsvpStatus.PENDING) {
                 FilledTonalButton(
                     onClick = onWhatsAppReminder,
                     shape = RoundedCornerShape(12.dp),
@@ -326,7 +392,7 @@ private fun GuestManagementCard(
                         .testTag("whatsapp_rsvp_${guest.id}")
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.Chat,
+                        imageVector = Icons.AutoMirrored.Outlined.Chat,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )
@@ -347,8 +413,10 @@ fun ParentsGiftsTabContent(
     selectedCategory: GiftCategory?,
     onSelectCategory: (GiftCategory?) -> Unit,
     onOpenAddGift: () -> Unit,
+    onEditGift: (GiftItem) -> Unit,
     onRequestManualReserve: (GiftItem) -> Unit,
-    onReleaseGift: (String) -> Unit
+    onReleaseGift: (String) -> Unit,
+    onRemoveGift: (String) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(
@@ -411,16 +479,18 @@ fun ParentsGiftsTabContent(
         if (gifts.isEmpty()) {
             EmptyStateCard(
                 icon = Icons.Outlined.CardGiftcard,
-                title = "Nenhum presente nesta categoria",
-                subtitle = "Cadastre sugestões de presentes para orientar seus convidados."
+                title = "Nenhum presente cadastrado",
+                subtitle = "Cadastre sugestões de presentes para que os convidados reservem sem duplicidade."
             )
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 gifts.forEach { gift ->
                     ParentGiftRowCard(
                         gift = gift,
+                        onEdit = { onEditGift(gift) },
                         onManualReserve = { onRequestManualReserve(gift) },
-                        onRelease = { onReleaseGift(gift.id) }
+                        onRelease = { onReleaseGift(gift.id) },
+                        onRemove = { onRemoveGift(gift.id) }
                     )
                 }
             }
@@ -431,8 +501,10 @@ fun ParentsGiftsTabContent(
 @Composable
 private fun ParentGiftRowCard(
     gift: GiftItem,
+    onEdit: () -> Unit,
     onManualReserve: () -> Unit,
-    onRelease: () -> Unit
+    onRelease: () -> Unit,
+    onRemove: () -> Unit
 ) {
     val festaColors = LocalFestaColors.current
 
@@ -458,14 +530,14 @@ private fun ParentGiftRowCard(
                         .size(44.dp)
                         .clip(RoundedCornerShape(12.dp))
                         .background(
-                            if (gift.isAvailable) festaColors.subtleSurface else festaColors.indigoContainer
+                            if (gift.available) festaColors.subtleSurface else festaColors.indigoContainer
                         ),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = giftCategoryIcon(gift.category),
+                        imageVector = giftCategoryIcon(gift.giftCategory),
                         contentDescription = null,
-                        tint = if (gift.isAvailable) festaColors.mutedText else festaColors.indigoText,
+                        tint = if (gift.available) festaColors.mutedText else festaColors.indigoText,
                         modifier = Modifier.size(22.dp)
                     )
                 }
@@ -485,7 +557,32 @@ private fun ParentGiftRowCard(
                         color = festaColors.mutedText
                     )
                     Spacer(modifier = Modifier.size(2.dp))
-                    CategoryBadge(category = gift.category)
+                    CategoryBadge(category = gift.giftCategory)
+                }
+
+                Row {
+                    IconButton(
+                        onClick = onEdit,
+                        modifier = Modifier
+                            .minimumInteractiveComponentSize()
+                            .testTag("edit_gift_${gift.id}")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Edit,
+                            contentDescription = "Editar presente",
+                            tint = festaColors.mutedText
+                        )
+                    }
+                    IconButton(
+                        onClick = onRemove,
+                        modifier = Modifier.minimumInteractiveComponentSize()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.DeleteOutline,
+                            contentDescription = "Excluir presente",
+                            tint = festaColors.mutedText
+                        )
+                    }
                 }
             }
 
@@ -494,7 +591,7 @@ private fun ParentGiftRowCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (gift.isAvailable) {
+                if (gift.available) {
                     Surface(
                         color = festaColors.emeraldContainer,
                         shape = RoundedCornerShape(999.dp)

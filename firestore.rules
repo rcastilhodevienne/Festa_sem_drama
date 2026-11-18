@@ -1,0 +1,221 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidTimestamp(ts) {
+      return ts is timestamp && ts <= request.time;
+    }
+
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll([
+               'userId', 'displayName', 'email', 'familyOrHostName',
+               'phoneWhatsApp', 'profileRole', 'profileCompleted',
+               'createdAt', 'updatedAt'
+             ]) &&
+             data.keys().hasOnly([
+               'userId', 'displayName', 'email', 'familyOrHostName',
+               'phoneWhatsApp', 'profileRole', 'profileCompleted',
+               'createdAt', 'updatedAt'
+             ]) &&
+             data.userId is string && data.userId == userId &&
+             data.displayName is string && data.displayName.size() >= 2 && data.displayName.size() <= 100 &&
+             data.email is string && data.email.size() <= 160 &&
+             data.familyOrHostName is string && data.familyOrHostName.size() <= 120 &&
+             data.phoneWhatsApp is string && data.phoneWhatsApp.size() <= 30 &&
+             data.profileRole in ['PARENT', 'ORGANIZER'] &&
+             data.profileCompleted is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidParty(data, userId) {
+      return data.keys().hasAll([
+               'userId', 'childName', 'ageTurning', 'title', 'subtitle',
+               'eventDateIso', 'dateDisplay', 'timeDisplay', 'venueName',
+               'fullAddress', 'rsvpDeadline', 'hostSignature', 'createdAt', 'updatedAt'
+             ]) &&
+             data.keys().hasOnly([
+               'userId', 'childName', 'ageTurning', 'title', 'subtitle',
+               'eventDateIso', 'dateDisplay', 'timeDisplay', 'venueName',
+               'fullAddress', 'rsvpDeadline', 'hostSignature', 'createdAt', 'updatedAt'
+             ]) &&
+             data.userId is string && data.userId == userId &&
+             data.childName is string && data.childName.size() >= 1 && data.childName.size() <= 60 &&
+             data.ageTurning is int && data.ageTurning >= 0 && data.ageTurning <= 120 &&
+             data.title is string && data.title.size() >= 2 && data.title.size() <= 120 &&
+             data.subtitle is string && data.subtitle.size() <= 240 &&
+             data.eventDateIso is string && data.eventDateIso.size() == 10 && data.eventDateIso.matches('^\\d{4}-\\d{2}-\\d{2}$') &&
+             data.dateDisplay is string && data.dateDisplay.size() >= 2 && data.dateDisplay.size() <= 80 &&
+             data.timeDisplay is string && data.timeDisplay.size() >= 2 && data.timeDisplay.size() <= 60 &&
+             data.venueName is string && data.venueName.size() >= 2 && data.venueName.size() <= 120 &&
+             data.fullAddress is string && data.fullAddress.size() >= 2 && data.fullAddress.size() <= 240 &&
+             data.rsvpDeadline is string && data.rsvpDeadline.size() <= 80 &&
+             data.hostSignature is string && data.hostSignature.size() <= 120 &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidGuest(data, userId, partyId) {
+      return data.keys().hasAll([
+               'userId', 'partyId', 'primaryGuestName', 'adultsCount', 'childrenCount',
+               'phoneWhatsApp', 'status', 'dietaryTags', 'dietaryNotes', 'source',
+               'createdAt', 'updatedAt'
+             ]) &&
+             data.keys().hasOnly([
+               'userId', 'partyId', 'primaryGuestName', 'adultsCount', 'childrenCount',
+               'phoneWhatsApp', 'status', 'dietaryTags', 'dietaryNotes', 'source',
+               'createdAt', 'updatedAt'
+             ]) &&
+             data.userId is string && data.userId == userId &&
+             data.partyId is string && data.partyId == partyId &&
+             data.primaryGuestName is string && data.primaryGuestName.size() >= 1 && data.primaryGuestName.size() <= 100 &&
+             data.adultsCount is int && data.adultsCount >= 0 && data.adultsCount <= 50 &&
+             data.childrenCount is int && data.childrenCount >= 0 && data.childrenCount <= 50 &&
+             data.phoneWhatsApp is string && data.phoneWhatsApp.size() <= 30 &&
+             data.status in ['CONFIRMED', 'PENDING', 'DECLINED'] &&
+             data.dietaryTags is list && data.dietaryTags.size() <= 10 &&
+             (data.dietaryTags.size() == 0 || (data.dietaryTags[0] is string && data.dietaryTags[0].size() <= 50)) &&
+             data.dietaryNotes is string && data.dietaryNotes.size() <= 400 &&
+             data.source in ['PARENTS', 'GUEST_FORM'] &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidGift(data, userId, partyId) {
+      return data.keys().hasAll([
+               'userId', 'partyId', 'name', 'category', 'sizeOrModelSuggestion',
+               'details', 'reservedByGuestName', 'createdAt', 'updatedAt'
+             ]) &&
+             data.keys().hasOnly([
+               'userId', 'partyId', 'name', 'category', 'sizeOrModelSuggestion',
+               'details', 'reservedByGuestName', 'createdAt', 'updatedAt'
+             ]) &&
+             data.userId is string && data.userId == userId &&
+             data.partyId is string && data.partyId == partyId &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 120 &&
+             data.category in ['TOYS', 'CLOTHING', 'BOOKS', 'EXPERIENCES'] &&
+             data.sizeOrModelSuggestion is string && data.sizeOrModelSuggestion.size() <= 120 &&
+             data.details is string && data.details.size() <= 300 &&
+             data.reservedByGuestName is string && data.reservedByGuestName.size() <= 100 &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false;
+      allow create: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       isValidUserProfile(incoming(), userId);
+      allow update: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       isValidUserProfile(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'displayName', 'email', 'familyOrHostName',
+                         'phoneWhatsApp', 'profileRole', 'profileCompleted', 'updatedAt'
+                       ]);
+      allow delete: if isOwner(userId) && isValidId(userId);
+    }
+
+    match /users/{userId}/parties/{partyId} {
+      allow get: if isOwner(userId) && isValidId(partyId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) &&
+                       isValidId(partyId) &&
+                       isValidParty(incoming(), userId);
+      allow update: if isOwner(userId) &&
+                       isValidId(partyId) &&
+                       isValidParty(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'childName', 'ageTurning', 'title', 'subtitle',
+                         'eventDateIso', 'dateDisplay', 'timeDisplay', 'venueName',
+                         'fullAddress', 'rsvpDeadline', 'hostSignature', 'updatedAt'
+                       ]);
+      allow delete: if isOwner(userId) && isValidId(partyId);
+
+      match /guests/{guestId} {
+        allow get: if isOwner(userId) && isValidId(partyId) && isValidId(guestId);
+        allow list: if isOwner(userId) && isValidId(partyId);
+        allow create: if isOwner(userId) &&
+                         isValidId(partyId) &&
+                         isValidId(guestId) &&
+                         exists(/databases/$(database)/documents/users/$(userId)/parties/$(partyId)) &&
+                         isValidGuest(incoming(), userId, partyId);
+        allow update: if isOwner(userId) &&
+                         isValidId(partyId) &&
+                         isValidId(guestId) &&
+                         isValidGuest(incoming(), userId, partyId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().partyId == existing().partyId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'primaryGuestName', 'adultsCount', 'childrenCount',
+                           'phoneWhatsApp', 'status', 'dietaryTags',
+                           'dietaryNotes', 'source', 'updatedAt'
+                         ]);
+        allow delete: if isOwner(userId) && isValidId(partyId) && isValidId(guestId);
+      }
+
+      match /gifts/{giftId} {
+        allow get: if isOwner(userId) && isValidId(partyId) && isValidId(giftId);
+        allow list: if isOwner(userId) && isValidId(partyId);
+        allow create: if isOwner(userId) &&
+                         isValidId(partyId) &&
+                         isValidId(giftId) &&
+                         exists(/databases/$(database)/documents/users/$(userId)/parties/$(partyId)) &&
+                         isValidGift(incoming(), userId, partyId);
+        allow update: if isOwner(userId) &&
+                         isValidId(partyId) &&
+                         isValidGift(incoming(), userId, partyId) &&
+                         isValidId(giftId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().partyId == existing().partyId &&
+                         incoming().createdAt == existing().createdAt &&
+                         (
+                           // Action: Reserve an available gift (anti-duplicate lock)
+                           (existing().reservedByGuestName == '' &&
+                            incoming().reservedByGuestName.size() >= 1 &&
+                            incoming().diff(existing()).affectedKeys().hasOnly(['reservedByGuestName', 'updatedAt'])) ||
+                           // Action: Release a reserved gift
+                           (existing().reservedByGuestName != '' &&
+                            incoming().reservedByGuestName == '' &&
+                            incoming().diff(existing()).affectedKeys().hasOnly(['reservedByGuestName', 'updatedAt'])) ||
+                           // Action: Edit gift details by parent
+                           incoming().diff(existing()).affectedKeys().hasOnly([
+                             'name', 'category', 'sizeOrModelSuggestion', 'details', 'updatedAt'
+                           ])
+                         );
+        allow delete: if isOwner(userId) && isValidId(partyId) && isValidId(giftId);
+      }
+    }
+  }
+}

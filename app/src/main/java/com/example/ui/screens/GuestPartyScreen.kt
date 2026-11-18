@@ -28,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.CardGiftcard
+import androidx.compose.material.icons.outlined.Celebration
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.LocationOn
@@ -58,6 +59,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -67,11 +69,11 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.R
-import com.example.data.PartyInitialData
 import com.example.model.GiftAvailabilityFilter
 import com.example.model.GiftCategory
 import com.example.model.GiftItem
 import com.example.model.GuestRsvpSubmission
+import com.example.model.PartyConstants
 import com.example.model.PartyEvent
 import com.example.model.PartyUiState
 import com.example.ui.components.CategoryBadge
@@ -84,6 +86,7 @@ import com.example.ui.theme.LocalFestaColors
 @Composable
 fun GuestPartyScreen(
     uiState: PartyUiState,
+    onSwitchToParents: () -> Unit,
     onSubmitRsvp: (
         guestName: String,
         phoneWhatsApp: String,
@@ -101,7 +104,33 @@ fun GuestPartyScreen(
     onFeedbackMessage: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var typedGuestName by remember { mutableStateOf("") }
+    val activeParty = uiState.activeParty
+    if (activeParty == null) {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp, vertical = 24.dp),
+            contentAlignment = Alignment.TopCenter
+        ) {
+            EmptyStateCard(
+                icon = Icons.Outlined.Celebration,
+                title = "Convite ainda não configurado",
+                subtitle = "Cadastre uma festa na Visão dos Pais para ativar o convite digital, o formulário de respostas e a lista de presentes.",
+                actionContent = {
+                    Button(
+                        onClick = onSwitchToParents,
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.minimumInteractiveComponentSize()
+                    ) {
+                        Text("Ir para Visão dos Pais")
+                    }
+                }
+            )
+        }
+        return
+    }
+
+    var typedGuestName by remember(activeParty.id) { mutableStateOf("") }
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -110,7 +139,7 @@ fun GuestPartyScreen(
     ) {
         item(key = "digital_invite") {
             DigitalInviteCard(
-                event = uiState.event,
+                event = activeParty,
                 onFeedbackMessage = onFeedbackMessage
             )
         }
@@ -128,7 +157,7 @@ fun GuestPartyScreen(
         item(key = "smart_gifts_header") {
             SmartGiftListSection(
                 gifts = uiState.filteredGuestGifts,
-                totalAvailable = uiState.gifts.count { it.isAvailable },
+                totalAvailable = uiState.gifts.count { it.available },
                 selectedCategory = uiState.selectedGuestGiftCategory,
                 selectedAvailability = uiState.selectedGuestGiftAvailability,
                 sizeFilters = uiState.availableSizeFilters,
@@ -167,7 +196,7 @@ private fun DigitalInviteCard(
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.img_party_hero),
-                    contentDescription = "Ilustração do convite de aniversário do ${event.childName}",
+                    contentDescription = "Ilustração do convite de aniversário de ${event.childName}",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
                 )
@@ -212,11 +241,13 @@ private fun DigitalInviteCard(
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
-                    Text(
-                        text = event.subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.9f)
-                    )
+                    if (event.subtitle.isNotBlank()) {
+                        Text(
+                            text = event.subtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White.copy(alpha = 0.9f)
+                        )
+                    }
                 }
             }
 
@@ -276,6 +307,14 @@ private fun DigitalInviteCard(
                     }
                 }
 
+                if (event.hostSignature.isNotBlank()) {
+                    Text(
+                        text = event.hostSignature,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = festaColors.mutedText
+                    )
+                }
+
                 Button(
                     onClick = {
                         ExternalActionHelper.openGoogleMaps(
@@ -305,7 +344,7 @@ private fun DigitalInviteCard(
 
 @Composable
 private fun InviteInfoTile(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     label: String,
     value: String,
     modifier: Modifier = Modifier
@@ -435,7 +474,7 @@ private fun ExpressRsvpCard(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         TextButton(onClick = onEditAgain) {
-                            Text("Alterar confirmação")
+                            Text("Enviar nova resposta / alterar")
                         }
                     }
                 }
@@ -546,7 +585,7 @@ private fun ExpressRsvpCard(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     verticalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
-                                    PartyInitialData.commonDietaryTags.forEach { tag ->
+                                    PartyConstants.commonDietaryTags.forEach { tag ->
                                         val isSelected = selectedDietaryTags.contains(tag)
                                         FilterChip(
                                             selected = isSelected,
@@ -616,7 +655,7 @@ private fun ExpressRsvpCard(
 private fun RsvpChoiceButton(
     selected: Boolean,
     label: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     activeContainer: Color,
     activeContent: Color,
     testTag: String,
@@ -700,13 +739,12 @@ private fun SmartGiftListSection(
                 }
             }
             Text(
-                text = "Ao escolher um item, ele é travado automaticamente para ninguém dar o mesmo presente.",
+                text = "Ao escolher um item, ele é travado automaticamente na base de dados para ninguém dar o mesmo presente.",
                 style = MaterialTheme.typography.bodySmall,
                 color = festaColors.mutedText
             )
         }
 
-        // Category filters
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -729,7 +767,6 @@ private fun SmartGiftListSection(
             }
         }
 
-        // Availability & Size filters
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -757,8 +794,8 @@ private fun SmartGiftListSection(
         if (gifts.isEmpty()) {
             EmptyStateCard(
                 icon = Icons.Outlined.CardGiftcard,
-                title = "Nenhum presente encontrado",
-                subtitle = "Tente limpar os filtros de categoria ou tamanho para ver todos os itens."
+                title = "Nenhum presente disponível aqui",
+                subtitle = "Cadastre sugestões de presentes na Visão dos Pais ou ajuste os filtros acima."
             )
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -788,7 +825,7 @@ private fun GuestGiftCard(
         color = MaterialTheme.colorScheme.surface,
         border = BorderStroke(
             width = 1.dp,
-            color = if (gift.isAvailable) festaColors.cardBorder else festaColors.cardBorder.copy(alpha = 0.6f)
+            color = if (gift.available) festaColors.cardBorder else festaColors.cardBorder.copy(alpha = 0.6f)
         )
     ) {
         Column(
@@ -807,14 +844,14 @@ private fun GuestGiftCard(
                         .size(56.dp)
                         .clip(RoundedCornerShape(14.dp))
                         .background(
-                            if (gift.isAvailable) festaColors.indigoContainer else festaColors.subtleSurface
+                            if (gift.available) festaColors.indigoContainer else festaColors.subtleSurface
                         ),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = giftCategoryIcon(gift.category),
-                        contentDescription = gift.category.label,
-                        tint = if (gift.isAvailable) MaterialTheme.colorScheme.primary else festaColors.mutedText,
+                        imageVector = giftCategoryIcon(gift.giftCategory),
+                        contentDescription = gift.giftCategory.label,
+                        tint = if (gift.available) MaterialTheme.colorScheme.primary else festaColors.mutedText,
                         modifier = Modifier.size(26.dp)
                     )
                 }
@@ -823,12 +860,12 @@ private fun GuestGiftCard(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    CategoryBadge(category = gift.category)
+                    CategoryBadge(category = gift.giftCategory)
                     Text(
                         text = gift.name,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = if (gift.isAvailable) {
+                        color = if (gift.available) {
                             MaterialTheme.colorScheme.onSurface
                         } else {
                             festaColors.mutedText
@@ -850,7 +887,7 @@ private fun GuestGiftCard(
                 }
             }
 
-            if (gift.isAvailable) {
+            if (gift.available) {
                 Button(
                     onClick = onChooseGift,
                     shape = RoundedCornerShape(12.dp),

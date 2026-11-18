@@ -1,0 +1,298 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated parent or organizer profile created on sign-in and persisted per user.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Full display name of the parent or organizer."
+        },
+        "email": {
+          "type": "string",
+          "description": "Account email address from Firebase Auth."
+        },
+        "familyOrHostName": {
+          "type": "string",
+          "description": "Default host signature or family name used on invites."
+        },
+        "phoneWhatsApp": {
+          "type": "string",
+          "description": "Organizer WhatsApp phone number."
+        },
+        "profileRole": {
+          "type": "string",
+          "enum": ["PARENT", "ORGANIZER"],
+          "description": "Organizer persona within the application."
+        },
+        "profileCompleted": {
+          "type": "boolean",
+          "description": "Indicates whether the user completed initial profile creation."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "displayName",
+        "email",
+        "familyOrHostName",
+        "phoneWhatsApp",
+        "profileRole",
+        "profileCompleted",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Party": {
+      "title": "Party",
+      "description": "Custom kids birthday party event created and managed by the parent.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID."
+        },
+        "childName": {
+          "type": "string",
+          "description": "Name of the birthday child."
+        },
+        "ageTurning": {
+          "type": "integer",
+          "description": "Age the child is turning."
+        },
+        "title": {
+          "type": "string",
+          "description": "Party event title."
+        },
+        "subtitle": {
+          "type": "string",
+          "description": "Party theme or welcome subtitle."
+        },
+        "eventDateIso": {
+          "type": "string",
+          "description": "Event date in ISO YYYY-MM-DD format for countdown calculation."
+        },
+        "dateDisplay": {
+          "type": "string",
+          "description": "Human-readable date label."
+        },
+        "timeDisplay": {
+          "type": "string",
+          "description": "Event start and end time label."
+        },
+        "venueName": {
+          "type": "string",
+          "description": "Name of the party venue."
+        },
+        "fullAddress": {
+          "type": "string",
+          "description": "Complete street address for navigation."
+        },
+        "rsvpDeadline": {
+          "type": "string",
+          "description": "RSVP confirmation deadline text."
+        },
+        "hostSignature": {
+          "type": "string",
+          "description": "Parents signature displayed on the digital invite."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "childName",
+        "ageTurning",
+        "title",
+        "subtitle",
+        "eventDateIso",
+        "dateDisplay",
+        "timeDisplay",
+        "venueName",
+        "fullAddress",
+        "rsvpDeadline",
+        "hostSignature",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "GuestGroup": {
+      "title": "GuestGroup",
+      "description": "Invited family or guest response record including headcount and dietary alerts.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID."
+        },
+        "partyId": {
+          "type": "string",
+          "description": "Parent party document ID."
+        },
+        "primaryGuestName": {
+          "type": "string",
+          "description": "Name of the primary guest or family."
+        },
+        "adultsCount": {
+          "type": "integer",
+          "description": "Number of adults in the group."
+        },
+        "childrenCount": {
+          "type": "integer",
+          "description": "Number of children in the group."
+        },
+        "phoneWhatsApp": {
+          "type": "string",
+          "description": "WhatsApp phone number."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["CONFIRMED", "PENDING", "DECLINED"],
+          "description": "RSVP status."
+        },
+        "dietaryTags": {
+          "type": "array",
+          "description": "Structured dietary restriction tags."
+        },
+        "dietaryNotes": {
+          "type": "string",
+          "description": "Detailed dietary notes or allergies."
+        },
+        "source": {
+          "type": "string",
+          "enum": ["PARENTS", "GUEST_FORM"],
+          "description": "Origin of the registration or response."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "partyId",
+        "primaryGuestName",
+        "adultsCount",
+        "childrenCount",
+        "phoneWhatsApp",
+        "status",
+        "dietaryTags",
+        "dietaryNotes",
+        "source",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "GiftItem": {
+      "title": "GiftItem",
+      "description": "Gift registry item with anti-duplicate reservation tracking.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID."
+        },
+        "partyId": {
+          "type": "string",
+          "description": "Parent party document ID."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the gift item."
+        },
+        "category": {
+          "type": "string",
+          "enum": ["TOYS", "CLOTHING", "BOOKS", "EXPERIENCES"],
+          "description": "Gift category."
+        },
+        "sizeOrModelSuggestion": {
+          "type": "string",
+          "description": "Suggested size, model, or brand."
+        },
+        "details": {
+          "type": "string",
+          "description": "Additional gift notes."
+        },
+        "reservedByGuestName": {
+          "type": "string",
+          "description": "Guest name who reserved the gift, or empty string if available."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "partyId",
+        "name",
+        "category",
+        "sizeOrModelSuggestion",
+        "details",
+        "reservedByGuestName",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "Authenticated user profile and access status."
+    },
+    "/users/{userId}/parties/{partyId}": {
+      "schema": {
+        "$ref": "#/entities/Party"
+      },
+      "description": "User-owned birthday party configurations."
+    },
+    "/users/{userId}/parties/{partyId}/guests/{guestId}": {
+      "schema": {
+        "$ref": "#/entities/GuestGroup"
+      },
+      "description": "Guests and RSVP responses belonging to a specific party."
+    },
+    "/users/{userId}/parties/{partyId}/gifts/{giftId}": {
+      "schema": {
+        "$ref": "#/entities/GiftItem"
+      },
+      "description": "Gift registry items belonging to a specific party."
+    }
+  }
+}
