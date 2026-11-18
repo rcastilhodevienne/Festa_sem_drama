@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">FestaSemDrama</string>
+    <string name="view_parents">Visão dos Pais</string>
+    <string name="view_guest">Página da Festa</string>
+    <string name="tab_guests">Convidados</string>
+    <string name="tab_gifts">Presentes</string>
+    <string name="tab_dietary">Alimentar</string>
+    <string name="open_in_maps">Abrir no GPS</string>
+    <string name="add_guest">Novo Convidado</string>
+    <string name="add_gift">Novo Presente</string>
+</resources>

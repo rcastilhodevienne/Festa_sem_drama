@@ -1,0 +1,6 @@
+{
+  "name": "FestaSemDrama",
+  "description": "Organizador executivo de eventos infantis com controle de RSVP, resumo de restrições alimentares e lista de presentes sem duplicidade.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
